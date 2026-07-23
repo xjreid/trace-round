@@ -24,11 +24,11 @@ Participate in a mock interview with a question, coding interface, and feedback.
 - Single Problem and Custom Interview navigation
 - Custom category selection UI
 - Dynamic routing for individual problem pages
+- Individual problem detail pages
+- Code editor interface
 
 ## Planned Features
 
-- Individual problem detail pages
-- Code editor interface
 - AI-powered interview feedback
 - User submissions page
 - Spring Boot backend
