@@ -1,0 +1,41 @@
+name: traceround
+
+services:
+  postgres:
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-traceround}
+      POSTGRES_USER: ${POSTGRES_USER:-traceround}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-traceround-local}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - traceround_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  code-runner:
+    build:
+      context: ./code-runner
+    ports:
+      - "127.0.0.1:8090:8081"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,exec,nosuid,size=64m,mode=1777
+    mem_limit: 256m
+    cpus: 0.75
+    pids_limit: 64
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      PORT: 8081
+      EXECUTION_TIMEOUT_MS: 5000
+      MAX_OUTPUT_BYTES: 32768
+
+volumes:
+  traceround_postgres_data:

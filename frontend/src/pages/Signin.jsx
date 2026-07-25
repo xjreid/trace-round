@@ -1,7 +1,11 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
-import { FaGithub, FaGoogle, FaMicrosoft } from 'react-icons/fa6'
+import { FaGithub, FaGoogle } from 'react-icons/fa6'
 import { useAuth } from '../context/authContext'
+import {
+  getAuthCapabilities,
+  signInWithProvider,
+} from './backend-functions-to-be-implemented/backendFunctions'
 import {
   isValidInterviewDestination,
   isValidSignInDestination,
@@ -9,16 +13,23 @@ import {
 import './Signin.css'
 
 const socialProviders = [
-  { name: 'Google', Icon: FaGoogle },
-  { name: 'GitHub', Icon: FaGithub },
-  { name: 'Microsoft', Icon: FaMicrosoft },
+  { id: 'google', name: 'Google', Icon: FaGoogle },
+  { id: 'github', name: 'GitHub', Icon: FaGithub },
 ]
 
 function Signin() {
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
-  const { user, signInAsDemo, signOut } = useAuth()
+  const { user, signIn, register, signOut } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [mode, setMode] = useState('signin')
+  const [name, setName] = useState('')
+  const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [errorMessage, setErrorMessage] = useState(
+    searchParams.get('oauthError') ?? '',
+  )
+  const [oauthProviders, setOauthProviders] = useState([])
   const requestedDestination = searchParams.get('returnTo') ?? ''
   const validDestination = isValidSignInDestination(requestedDestination)
     ? requestedDestination
@@ -29,15 +40,47 @@ function Signin() {
   const destination = validDestination ?? '/'
   const signedInDestination = validDestination ?? '/problems'
 
-  const handleDemoSignIn = async () => {
+  useEffect(() => {
+    let isCurrent = true
+
+    getAuthCapabilities()
+      .then((capabilities) => {
+        if (isCurrent) {
+          setOauthProviders(capabilities.oauthProviders ?? [])
+        }
+      })
+      .catch(() => {
+        if (isCurrent) {
+          setOauthProviders([])
+        }
+      })
+
+    return () => {
+      isCurrent = false
+    }
+  }, [])
+
+  const handleSubmit = async (event) => {
+    event.preventDefault()
     setIsSubmitting(true)
-    await signInAsDemo()
-    navigate(destination, {
-      replace: true,
-      state: interviewDestination
-        ? { interviewAccess: 'authenticated' }
-        : undefined,
-    })
+    setErrorMessage('')
+
+    try {
+      if (mode === 'register') {
+        await register({ name, email, password })
+      } else {
+        await signIn({ email, password })
+      }
+      navigate(destination, {
+        replace: true,
+        state: interviewDestination
+          ? { interviewAccess: 'authenticated' }
+          : undefined,
+      })
+    } catch (error) {
+      setErrorMessage(error.message)
+      setIsSubmitting(false)
+    }
   }
 
   if (user) {
@@ -50,7 +93,7 @@ function Signin() {
           <p className="signin-kicker">Signed in</p>
           <h2>{user.name}</h2>
           <p className="signin-description">
-            You are using TraceRound&apos;s temporary development account.
+            Your interview feedback will be saved to this account.
           </p>
           <div className="signin-account-actions">
             <button
@@ -93,14 +136,73 @@ function Signin() {
           </p>
         </header>
 
+        <form className="signin-form" onSubmit={handleSubmit}>
+          {mode === 'register' && (
+            <label>
+              <span>Name</span>
+              <input
+                type="text"
+                autoComplete="name"
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                required
+                maxLength="120"
+              />
+            </label>
+          )}
+          <label>
+            <span>Email</span>
+            <input
+              type="email"
+              autoComplete="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              required
+            />
+          </label>
+          <label>
+            <span>Password</span>
+            <input
+              type="password"
+              autoComplete={
+                mode === 'register' ? 'new-password' : 'current-password'
+              }
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              minLength={mode === 'register' ? 10 : undefined}
+              required
+            />
+          </label>
+
+          {errorMessage && (
+            <p className="signin-error" role="alert">{errorMessage}</p>
+          )}
+
+          <button
+            className="signin-primary-button"
+            type="submit"
+            disabled={isSubmitting}
+          >
+            {isSubmitting
+              ? mode === 'register' ? 'Creating account...' : 'Signing in...'
+              : mode === 'register' ? 'Create account' : 'Sign in'}
+            {!isSubmitting && <span aria-hidden="true">→</span>}
+          </button>
+        </form>
+
         <button
-          className="signin-primary-button"
+          className="signin-mode-button"
           type="button"
-          onClick={handleDemoSignIn}
-          disabled={isSubmitting}
+          onClick={() => {
+            setMode((current) =>
+              current === 'signin' ? 'register' : 'signin'
+            )
+            setErrorMessage('')
+          }}
         >
-          {isSubmitting ? 'Signing in...' : 'Continue as the demo user'}
-          {!isSubmitting && <span aria-hidden="true">→</span>}
+          {mode === 'signin'
+            ? 'New to TraceRound? Create an account'
+            : 'Already have an account? Sign in'}
         </button>
 
         <div className="signin-divider">
@@ -108,30 +210,34 @@ function Signin() {
         </div>
 
         <div className="social-signin-list">
-          {socialProviders.map(({ name, Icon }) => (
+          {socialProviders.map(({ id, name, Icon }) => {
+            const enabled = oauthProviders.includes(id)
+            return (
             <button
               type="button"
-              disabled
+              disabled={!enabled}
+              onClick={() => signInWithProvider(id)}
               aria-describedby="social-signin-notice"
-              key={name}
+              key={id}
             >
               <Icon aria-hidden="true" />
               <span>{name}</span>
-              <small>Setup required</small>
+              <small>{enabled ? 'Continue' : 'Setup required'}</small>
             </button>
-          ))}
+            )
+          })}
         </div>
 
         <p className="social-signin-notice" id="social-signin-notice">
-          Google, GitHub, and Microsoft sign-in will become available after an
-          OAuth backend or authentication provider is connected.
+          OAuth buttons become active when their client IDs and secrets are
+          configured in the backend.
         </p>
 
         <div className="temporary-auth-note">
-          <strong>Development mode</strong>
+          <strong>Secure backend authentication</strong>
           <p>
-            Demo sign-in is stored only in this browser and is not secure
-            authentication.
+            Passwords are hashed by Spring Security and the browser receives
+            only an HttpOnly session cookie.
           </p>
         </div>
       </div>

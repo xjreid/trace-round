@@ -30,6 +30,7 @@ function ProblemDetails() {
   const [runResult, setRunResult] = useState(null)
   const [isRunning, setIsRunning] = useState(false)
   const [submission, setSubmission] = useState(null)
+  const [errorMessage, setErrorMessage] = useState('')
   const submissionStarted = useRef(false)
   const interviewAnswers = useRef({ messages, language, code })
 
@@ -45,15 +46,22 @@ function ProblemDetails() {
     let isCurrent = true
 
     async function createSession() {
-      const newSession = await startProblemSession(problem)
+      try {
+        const newSession = await startProblemSession(problem)
 
-      if (isCurrent) {
-        setSession(newSession)
-        setMessages(newSession.initialMessages)
-        setSecondsRemaining(
-          newSession.durations.discussion ?? FALLBACK_DISCUSSION_SECONDS,
-        )
-        setStage('discussion')
+        if (isCurrent) {
+          setSession(newSession)
+          setMessages(newSession.initialMessages)
+          setSecondsRemaining(
+            newSession.durations.discussion ?? FALLBACK_DISCUSSION_SECONDS,
+          )
+          setStage('discussion')
+        }
+      } catch (error) {
+        if (isCurrent) {
+          setErrorMessage(error.message)
+          setStage('error')
+        }
       }
     }
 
@@ -80,19 +88,25 @@ function ProblemDetails() {
       submissionStarted.current = true
       setStage('submitting')
 
-      const completedSubmission = await submitInterviewSession({
-        sessionId: session.id,
-        answers: {
-          problem,
-          discussionMessages: interviewAnswers.current.messages,
-          language: interviewAnswers.current.language,
-          code: interviewAnswers.current.code,
-          endedBy,
-        },
-      })
+      try {
+        const completedSubmission = await submitInterviewSession({
+          sessionId: session.id,
+          answers: {
+            problem,
+            discussionMessages: interviewAnswers.current.messages,
+            language: interviewAnswers.current.language,
+            code: interviewAnswers.current.code,
+            endedBy,
+          },
+        })
 
-      setSubmission(completedSubmission)
-      setStage('ended')
+        setSubmission(completedSubmission)
+        setStage('ended')
+      } catch (error) {
+        submissionStarted.current = false
+        setErrorMessage(error.message)
+        setStage('error')
+      }
     },
     [problem, session],
   )
@@ -136,27 +150,43 @@ function ProblemDetails() {
     setMessages(updatedConversation)
     setIsInterviewerResponding(true)
 
-    const interviewerMessage = await sendInterviewChatMessage({
-      sessionId: session.id,
-      problem,
-      message: content,
-      conversation: updatedConversation,
-    })
+    try {
+      const interviewerMessage = await sendInterviewChatMessage({
+        sessionId: session.id,
+        problem,
+        message: content,
+        conversation: updatedConversation,
+      })
 
-    setMessages((current) => [...current, interviewerMessage])
-    setIsInterviewerResponding(false)
+      setMessages((current) => [...current, interviewerMessage])
+    } catch (error) {
+      setErrorMessage(error.message)
+    } finally {
+      setIsInterviewerResponding(false)
+    }
   }
 
   const handleRun = async () => {
     setIsRunning(true)
-    const result = await runCodeSubmission({
-      sessionId: session.id,
-      problem,
-      language,
-      code,
-    })
-    setRunResult(result)
-    setIsRunning(false)
+    try {
+      const result = await runCodeSubmission({
+        sessionId: session.id,
+        problem,
+        language,
+        code,
+      })
+      setRunResult(result)
+    } catch (error) {
+      setRunResult({
+        status: 'error',
+        summary: 'Unable to run code',
+        output: error.message,
+        passedTests: 0,
+        totalTests: 0,
+      })
+    } finally {
+      setIsRunning(false)
+    }
   }
 
   if (!problem) {
@@ -174,6 +204,16 @@ function ProblemDetails() {
       <section className="active-problem practice-state">
         <p className="practice-state__eyebrow">Single interview</p>
         <h2>Preparing your interview...</h2>
+      </section>
+    )
+  }
+
+  if (stage === 'error') {
+    return (
+      <section className="active-problem practice-state">
+        <p className="practice-state__eyebrow">Single interview</p>
+        <h2>Unable to continue this interview</h2>
+        <p>{errorMessage || 'Please return to the problem list and try again.'}</p>
       </section>
     )
   }

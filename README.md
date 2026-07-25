@@ -1,59 +1,209 @@
 # TraceRound
 
-TraceRound is a coding interview practice platform where users can improve communication and interview skills. Users can practice single problems or create custom interviews based on selected coding problem categories. Throughout each coding problem, users will be prompted with questions and comments that they must respond to. At the end of the practice session, users will receive feedback and areas to improve.
+TraceRound is a coding interview practice platform built with React, Spring Boot,
+PostgreSQL, and an isolated local code-runner service.
 
-## Screenshots
+## What is implemented
 
-### Problem List
+- Problem catalog with 51 seeded problems
+- Single-problem and custom interview sessions
+- Persisted interview messages, source code, submissions, and feedback
+- Email/password accounts with BCrypt password hashing
+- Database-backed, HttpOnly login sessions and CSRF protection
+- Optional Google and GitHub OAuth configuration
+- Local execution for JavaScript, Python, Java, and C++
+- A replaceable AI interface with a key-free mock interviewer
+- User submission history and aggregate scores
+- Flyway database migrations
 
-View a list of problems including difficulty and topic. 
+## Architecture
 
-![Problem List](docs/screenshots/Problem-List.png)
+The React app calls the Spring Boot JSON API. Spring Boot stores application and
+login-session data in PostgreSQL. Code is sent to a separate Docker service
+instead of being executed by the Spring process.
 
-### Problem Interface
-
-Participate in a mock interview with a question, coding interface, and feedback.
-
-![Problem Interface](docs/screenshots/Problem-Interface.png)
-
-## Current Features
-
-- React/Vite frontend setup
-- Header navigation
-- Problems page
-- Single Problem and Custom Interview navigation
-- Custom category selection UI
-- Dynamic routing for individual problem pages
-- Individual problem detail pages
-- Code editor interface
-
-## Planned Features
-
-- AI-powered interview feedback
-- User submissions page
-- Spring Boot backend
-- Problem and submission storage
-- User sign-in and authentication
-- User history storage
-
-## Tech Stack
-
-- React
-- Vite
-- JavaScript
-- CSS
-
-## Planned Backend
-
-- Java
-- Spring Boot
-
-## Running the Frontend
-
-```bash
-cd frontend
-npm install
-npm run dev
+```text
+React :5173 -> Spring Boot :8080 -> PostgreSQL :5432
+                              |
+                              +-> code-runner :8090
 ```
 
-After starting the development server, open the local URL shown in the terminal.
+Docker Compose is used locally because it starts PostgreSQL and the code runner
+with repeatable versions, ports, storage, and resource limits. You still run
+Spring Boot and Vite normally, which keeps development reloads fast.
+
+## Requirements
+
+- Docker Desktop
+- Java 21
+- Node.js 20 or newer
+
+Maven does not need to be installed; the repository includes the Maven wrapper.
+
+## Run locally
+
+1. Start Docker Desktop.
+
+2. From the repository root, start PostgreSQL and the code runner:
+
+   ```bash
+   docker compose up -d --build
+   ```
+
+3. In a second terminal, start Spring Boot:
+
+   ```bash
+   cd backend
+   ./mvnw spring-boot:run
+   ```
+
+4. In a third terminal, start the frontend:
+
+   ```bash
+   cd frontend
+   npm install
+   npm run dev
+   ```
+
+5. Open [http://localhost:5173](http://localhost:5173).
+
+The local defaults in
+[application.properties](backend/src/main/resources/application.properties)
+match `compose.yaml`, so copying `.env.example` is optional unless you want to
+change settings.
+
+### Verify the complete backend flow
+
+With all services running:
+
+```bash
+backend/scripts/smoke-local.sh
+```
+
+This registers a temporary user, creates an interview, sends a message, runs
+Python code, submits the interview, reads its feedback, and verifies the saved
+submission.
+
+### Stop everything
+
+- Stop Spring Boot or Vite by focusing its terminal and pressing `Control+C`.
+- Stop the Docker services with:
+
+  ```bash
+  docker compose down
+  ```
+
+`docker compose down` preserves the PostgreSQL named volume. Running
+`docker compose down -v` also deletes all local TraceRound database data.
+
+## Local PostgreSQL storage
+
+PostgreSQL data is stored in the Docker named volume
+`traceround_postgres_data`, not in the repository. It remains available when
+containers stop or Docker Desktop restarts. Flyway automatically creates and
+updates the schema whenever Spring Boot starts.
+
+To inspect the database:
+
+```bash
+docker compose exec postgres psql -U traceround -d traceround
+```
+
+## Authentication and OAuth
+
+Email/password registration and login work immediately. To enable OAuth, create
+an application with the provider, put its client ID and secret in environment
+variables, and activate the matching Spring profile:
+
+```bash
+export GOOGLE_CLIENT_ID="..."
+export GOOGLE_CLIENT_SECRET="..."
+export SPRING_PROFILES_ACTIVE="oauth-google"
+cd backend
+./mvnw spring-boot:run
+```
+
+Available profiles are `oauth-google` and `oauth-github`. Combine them with
+commas. The local callback URLs are:
+
+```text
+http://localhost:8080/login/oauth2/code/google
+http://localhost:8080/login/oauth2/code/github
+```
+
+Only configured providers appear as enabled buttons in the frontend.
+Credentials belong in local environment variables and Render secrets—never in
+Git.
+
+## AI provider
+
+The default `mock` provider makes the complete interview and feedback workflow
+usable without an API key. The backend reads these environment variables:
+
+```text
+TRACEROUND_AI_PROVIDER
+TRACEROUND_AI_API_KEY
+TRACEROUND_AI_MODEL
+```
+
+The provider interface is isolated in
+`backend/src/main/java/com/traceround/backend/ai`. Once Gemini or Grok is
+selected, its adapter can be added there without changing controllers,
+database entities, or the frontend. Selecting `gemini` currently fails fast
+with a clear configuration message because a real provider adapter has not yet
+been chosen.
+
+## Code execution safety
+
+The local code runner is a separate read-only Docker container with memory,
+CPU, process, output, and time limits. It supports only JavaScript, Python,
+Java, and C++.
+
+This runner is appropriate for local development, not for executing hostile
+public code in production. A production deployment should use a dedicated
+sandbox platform or short-lived per-execution containers/VMs with no secrets,
+no network access, strict quotas, and abuse controls. Do not place untrusted
+execution inside the Spring Boot process.
+
+The current runner checks that code compiles/runs. Per-problem hidden test cases
+will require test harnesses and expected results for each problem.
+
+## Neon, Render, and Vercel later
+
+The application is already database-provider independent at the PostgreSQL
+level. For Neon, set Render secrets using the connection details Neon gives
+you:
+
+```text
+SPRING_DATASOURCE_URL=jdbc:postgresql://<host>/<database>?sslmode=require
+SPRING_DATASOURCE_USERNAME=<username>
+SPRING_DATASOURCE_PASSWORD=<password>
+```
+
+Flyway will create the same schema in Neon. The local Docker volume remains a
+separate development database and is not uploaded to Neon automatically.
+
+The backend includes a production Dockerfile for Render. Typical production
+settings are:
+
+```text
+FRONTEND_URL=https://<your-vercel-site>
+SESSION_COOKIE_SECURE=true
+SESSION_COOKIE_SAME_SITE=none
+CODE_RUNNER_BASE_URL=<production-runner-url>
+```
+
+Set `VITE_API_BASE_URL` and `VITE_BACKEND_ORIGIN` in Vercel to the Render
+backend URL. Before public launch, use a custom same-site API domain where
+possible and deploy a production-grade code execution service.
+
+## Tests
+
+```bash
+cd backend
+./mvnw test
+
+cd ../frontend
+npm run lint
+npm run build
+```

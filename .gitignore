@@ -1,5 +1,13 @@
 node_modules/
 .env
+.env.*
+**/.env
+**/.env.*
+!.env.example
+!**/.env.example
+backend/src/main/resources/application-local.properties
+backend/src/main/resources/application-secrets.properties
+secrets/
 .DS_Store
 dist/
 build/

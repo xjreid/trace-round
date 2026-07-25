@@ -6,7 +6,8 @@ import {
 import { AuthContext } from './authContext'
 import {
   getCurrentUser,
-  signInAsDefaultUser,
+  registerUser,
+  signInUser,
   signOutUser,
 } from '../pages/backend-functions-to-be-implemented/backendFunctions'
 
@@ -18,11 +19,19 @@ export function AuthProvider({ children }) {
     let isCurrent = true
 
     async function loadCurrentUser() {
-      const currentUser = await getCurrentUser()
-
-      if (isCurrent) {
-        setUser(currentUser)
-        setIsAuthLoading(false)
+      try {
+        const currentUser = await getCurrentUser()
+        if (isCurrent) {
+          setUser(currentUser)
+        }
+      } catch {
+        if (isCurrent) {
+          setUser(null)
+        }
+      } finally {
+        if (isCurrent) {
+          setIsAuthLoading(false)
+        }
       }
     }
 
@@ -37,10 +46,15 @@ export function AuthProvider({ children }) {
     () => ({
       user,
       isAuthLoading,
-      signInAsDemo: async () => {
-        const defaultUser = await signInAsDefaultUser()
-        setUser(defaultUser)
-        return defaultUser
+      signIn: async (credentials) => {
+        const signedInUser = await signInUser(credentials)
+        setUser(signedInUser)
+        return signedInUser
+      },
+      register: async (details) => {
+        const registeredUser = await registerUser(details)
+        setUser(registeredUser)
+        return registeredUser
       },
       signOut: async () => {
         await signOutUser()
