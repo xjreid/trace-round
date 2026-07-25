@@ -2,7 +2,10 @@ import { useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { FaGithub, FaGoogle, FaMicrosoft } from 'react-icons/fa6'
 import { useAuth } from '../context/authContext'
-import { isValidInterviewDestination } from './problems/interviewNavigation'
+import {
+  isValidInterviewDestination,
+  isValidSignInDestination,
+} from './problems/interviewNavigation'
 import './Signin.css'
 
 const socialProviders = [
@@ -17,10 +20,14 @@ function Signin() {
   const { user, signInAsDemo, signOut } = useAuth()
   const [isSubmitting, setIsSubmitting] = useState(false)
   const requestedDestination = searchParams.get('returnTo') ?? ''
+  const validDestination = isValidSignInDestination(requestedDestination)
+    ? requestedDestination
+    : null
   const interviewDestination = isValidInterviewDestination(requestedDestination)
     ? requestedDestination
     : null
-  const destination = interviewDestination ?? '/'
+  const destination = validDestination ?? '/'
+  const signedInDestination = validDestination ?? '/problems'
 
   const handleDemoSignIn = async () => {
     setIsSubmitting(true)
@@ -50,15 +57,19 @@ function Signin() {
               className="signin-primary-button"
               type="button"
               onClick={() =>
-                navigate(interviewDestination ?? '/problems', {
-                  replace: Boolean(interviewDestination),
+                navigate(signedInDestination, {
+                  replace: Boolean(validDestination),
                   state: interviewDestination
                     ? { interviewAccess: 'authenticated' }
                     : undefined,
                 })
               }
             >
-              {interviewDestination ? 'Continue to interview' : 'Start practicing'}
+              {interviewDestination
+                ? 'Continue to interview'
+                : validDestination === '/submissions'
+                  ? 'View submissions'
+                  : 'Start practicing'}
               <span aria-hidden="true">→</span>
             </button>
             <button className="signin-text-button" type="button" onClick={signOut}>

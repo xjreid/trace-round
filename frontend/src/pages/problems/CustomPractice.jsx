@@ -388,6 +388,9 @@ function CustomPractice() {
             }
             actionVariant="submit"
             runResult={activeQuestionState.runResult}
+            onCloseRunResult={() =>
+              updateQuestionState(activeProblem.slug, { runResult: null })
+            }
             isRunning={isRunning}
           />
         </>

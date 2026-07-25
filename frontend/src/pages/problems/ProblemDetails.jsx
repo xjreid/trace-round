@@ -224,6 +224,7 @@ function ProblemDetails() {
             actionLabel="Submit interview"
             actionVariant="submit"
             runResult={runResult}
+            onCloseRunResult={() => setRunResult(null)}
             isRunning={isRunning}
           />
         </>

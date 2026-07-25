@@ -19,6 +19,7 @@ function ProblemWorkspace({
   actionLabel = 'Start interview',
   actionVariant = 'start',
   runResult = null,
+  onCloseRunResult,
   isRunning = false,
 }) {
   return (
@@ -107,21 +108,69 @@ function ProblemWorkspace({
             height="100%"
             aria-label={`${language} code editor`}
           />
-          {runResult && (
-            <div className={`code-run-result code-run-result--${runResult.status}`}>
-              <div>
-                <strong>{runResult.summary}</strong>
-                {runResult.totalTests > 0 && (
-                  <span>
-                    {runResult.passedTests}/{runResult.totalTests} checks passed
-                  </span>
-                )}
-              </div>
-              <p>{runResult.output}</p>
-            </div>
-          )}
         </div>
       </section>
+
+      {runResult && (
+        <div
+          className="run-result-backdrop"
+          role="presentation"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              onCloseRunResult()
+            }
+          }}
+        >
+          <section
+            className={`run-result-dialog run-result-dialog--${runResult.status}`}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="run-result-title"
+            aria-describedby="run-result-output"
+            onKeyDown={(event) => {
+              if (event.key === 'Escape') {
+                onCloseRunResult()
+              }
+            }}
+          >
+            <header className="run-result-dialog__header">
+              <div>
+                <span className="run-result-dialog__eyebrow">Code execution</span>
+                <h2 id="run-result-title">{runResult.summary}</h2>
+              </div>
+              <button
+                className="run-result-dialog__close-icon"
+                type="button"
+                aria-label="Close run results"
+                onClick={onCloseRunResult}
+                autoFocus
+              >
+                ×
+              </button>
+            </header>
+
+            <div className="run-result-dialog__body">
+              <div className="run-result-dialog__test-count">
+                <strong>
+                  {runResult.passedTests}
+                  <small>/{runResult.totalTests}</small>
+                </strong>
+                <span>Test cases passed</span>
+              </div>
+              <div className="run-result-dialog__output">
+                <span>Output</span>
+                <p id="run-result-output">{runResult.output}</p>
+              </div>
+            </div>
+
+            <footer className="run-result-dialog__footer">
+              <button type="button" onClick={onCloseRunResult}>
+                Close results
+              </button>
+            </footer>
+          </section>
+        </div>
+      )}
     </div>
   )
 }

@@ -15,3 +15,10 @@ export function isValidInterviewDestination(destination) {
     customInterviewPath.test(destination)
   )
 }
+
+export function isValidSignInDestination(destination) {
+  return (
+    destination === '/submissions' ||
+    isValidInterviewDestination(destination)
+  )
+}
