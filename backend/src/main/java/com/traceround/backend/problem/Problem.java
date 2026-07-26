@@ -16,6 +16,9 @@ public class Problem {
     private String category;
     @Column(columnDefinition = "text")
     private String description;
+    private boolean enabled;
+    @Column(name = "execution_spec", columnDefinition = "text")
+    private String executionSpec;
 
     protected Problem() {
     }
@@ -38,5 +41,13 @@ public class Problem {
 
     public String getDescription() {
         return description;
+    }
+
+    public boolean isEnabled() {
+        return enabled;
+    }
+
+    public String getExecutionSpec() {
+        return executionSpec;
     }
 }

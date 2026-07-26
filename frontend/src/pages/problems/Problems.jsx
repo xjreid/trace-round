@@ -1,14 +1,34 @@
 
 
 import './Problems.css'
-import { problems } from '../../data/problems'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
+import { getProblems } from '../backend-functions-to-be-implemented/backendFunctions'
 import { createInterviewAccessPath } from './interviewNavigation'
 
 function Problems() {
   const navigate = useNavigate()
+  const [problems, setProblems] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [loadError, setLoadError] = useState('')
   const [searchQuery, setSearchQuery] = useState('')
+
+  useEffect(() => {
+    let isCurrent = true
+    getProblems()
+      .then((loadedProblems) => {
+        if (isCurrent) setProblems(loadedProblems)
+      })
+      .catch((error) => {
+        if (isCurrent) setLoadError(error.message)
+      })
+      .finally(() => {
+        if (isCurrent) setIsLoading(false)
+      })
+    return () => {
+      isCurrent = false
+    }
+  }, [])
 
   const filteredProblems = useMemo(() => {
     const normalizedQuery = searchQuery.trim().toLowerCase()
@@ -22,7 +42,7 @@ function Problems() {
         value.toLowerCase().includes(normalizedQuery),
       ),
     )
-  }, [searchQuery])
+  }, [problems, searchQuery])
 
   const handleProblemClick = (problemSlug) => {
     navigate(createInterviewAccessPath(`/problems/${problemSlug}`))
@@ -73,7 +93,11 @@ function Problems() {
 
       <div className="problems-container">
         <div className="problems-list-header">
-          <span>{searchQuery ? 'Search results' : 'Available problems'}</span>
+          <span>
+            {isLoading
+              ? 'Loading problems'
+              : searchQuery ? 'Search results' : 'Available problems'}
+          </span>
           <span>
             {filteredProblems.length} {filteredProblems.length === 1 ? 'challenge' : 'challenges'}
           </span>
@@ -83,7 +107,7 @@ function Problems() {
             {filteredProblems.map((problem) => (
               <tr
                 className="problem-row"
-                key={problem.id}
+                key={problem.slug}
                 onClick={() => handleProblemClick(problem.slug)}
                 onKeyDown={(event) => {
                   if (event.key === 'Enter' || event.key === ' ') {
@@ -111,8 +135,16 @@ function Problems() {
             {filteredProblems.length === 0 && (
               <tr>
                 <td className="problem-search-empty" colSpan="2">
-                  <strong>No matching problems</strong>
-                  <span>Try another problem name, topic, or difficulty.</span>
+                  <strong>
+                    {loadError
+                      ? 'Unable to load problems'
+                      : isLoading ? 'Loading…' : 'No matching problems'}
+                  </strong>
+                  <span>
+                    {loadError ||
+                      (!isLoading &&
+                        'Try another problem name, topic, or difficulty.')}
+                  </span>
                 </td>
               </tr>
             )}

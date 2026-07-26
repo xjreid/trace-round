@@ -3,13 +3,13 @@ import { java } from '@codemirror/lang-java'
 import { javascript } from '@codemirror/lang-javascript'
 import { cpp } from '@codemirror/lang-cpp'
 
-export const languages = ['Python', 'Java', 'C++', 'Javascript']
+export const languages = ['Python', 'Java', 'C++', 'JavaScript']
 
 export const languageExtensions = {
   Python: [python()],
   Java: [java()],
   'C++': [cpp()],
-  Javascript: [javascript()],
+  JavaScript: [javascript()],
 }
 
 export const editorSetup = {

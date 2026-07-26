@@ -5,7 +5,8 @@ PostgreSQL, and an isolated local code-runner service.
 
 ## What is implemented
 
-- Problem catalog with 51 seeded problems
+- Problem catalog with 34 curated algorithm and data-structure problems
+- Three server-side test cases and generated starter code for every problem
 - Single-problem and custom interview sessions
 - Persisted interview messages, source code, submissions, and feedback
 - Email/password accounts with BCrypt password hashing
@@ -165,8 +166,15 @@ sandbox platform or short-lived per-execution containers/VMs with no secrets,
 no network access, strict quotas, and abuse controls. Do not place untrusted
 execution inside the Spring Boot process.
 
-The current runner checks that code compiles/runs. Per-problem hidden test cases
-will require test harnesses and expected results for each problem.
+The runner builds a language-specific test harness around the selected
+problem's method, executes the server-side test cases, and stops at the first
+failure. A failure reports the input, expected value, and actual value without
+sending the complete test-case dataset to the browser.
+
+The initial catalog intentionally excludes SQL, shell, concurrency, system
+design, stateful class-design, and randomized problems. It supports regular
+functions plus arrays, strings, matrices, linked lists, binary trees, and
+graph/grid inputs.
 
 ## Neon, Render, and Vercel later
 

@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { problems } from '../../data/problems'
 import {
+  getProblems,
   requestPracticeProblemSlugs,
   runCodeSubmission,
   sendInterviewChatMessage,
@@ -24,11 +24,11 @@ function decodeCategories(input = '') {
     .map((category) => decodeURIComponent(category))
 }
 
-function createQuestionState(initialMessages = []) {
+function createQuestionState(problem = null, initialMessages = []) {
   return {
     messages: initialMessages,
     language: languages[0],
-    code: '',
+    codeByLanguage: { ...(problem?.starterCode ?? {}) },
     runResult: null,
   }
 }
@@ -70,12 +70,14 @@ function CustomPractice() {
 
     async function createSession() {
       try {
-        const slugs = await requestPracticeProblemSlugs(
-          categories,
-          requestedQuestionCount,
-        )
+        const [slugs, availableProblems] = await Promise.all([
+          requestPracticeProblemSlugs(categories, requestedQuestionCount),
+          getProblems(),
+        ])
         const chosenProblems = slugs
-          .map((slug) => problems.find((problem) => problem.slug === slug))
+          .map((slug) =>
+            availableProblems.find((problem) => problem.slug === slug),
+          )
           .filter(Boolean)
 
         if (chosenProblems.length !== requestedQuestionCount) {
@@ -92,6 +94,7 @@ function CustomPractice() {
           chosenProblems.map((problem, index) => [
             problem.slug,
             createQuestionState(
+              problem,
               newSession.questions[index]?.initialMessages ?? [],
             ),
           ]),
@@ -193,13 +196,13 @@ function CustomPractice() {
       try {
         const answers = selectedProblems.map((problem) => {
           const answer =
-            questionStatesRef.current[problem.slug] ?? createQuestionState()
+            questionStatesRef.current[problem.slug] ?? createQuestionState(problem)
 
           return {
             problem,
             discussionMessages: answer.messages,
             language: answer.language,
-            code: answer.code,
+            code: answer.codeByLanguage[answer.language] ?? '',
             endedBy: completionReasons.current[problem.slug],
           }
         })
@@ -298,7 +301,8 @@ function CustomPractice() {
         categories,
         questionNumber: activeQuestionIndex + 1,
         language: activeQuestionState.language,
-        code: activeQuestionState.code,
+        code:
+          activeQuestionState.codeByLanguage[activeQuestionState.language] ?? '',
       })
       updateQuestionState(problemSlug, { runResult: result })
     } finally {
@@ -372,12 +376,21 @@ function CustomPractice() {
             className="problem-workspace--timed"
             problem={activeProblem}
             language={activeQuestionState.language}
-            code={activeQuestionState.code}
+            code={
+              activeQuestionState.codeByLanguage[
+                activeQuestionState.language
+              ] ?? ''
+            }
             onLanguageChange={(language) =>
               updateQuestionState(activeProblem.slug, { language })
             }
             onCodeChange={(code) =>
-              updateQuestionState(activeProblem.slug, { code })
+              updateQuestionState(activeProblem.slug, (currentState) => ({
+                codeByLanguage: {
+                  ...currentState.codeByLanguage,
+                  [currentState.language]: code,
+                },
+              }))
             }
             onStart={() => completeQuestion('submitted')}
             onRun={handleRun}

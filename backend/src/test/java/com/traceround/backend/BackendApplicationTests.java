@@ -6,6 +6,10 @@ import com.traceround.backend.user.AppUser;
 import com.traceround.backend.user.AppUserRepository;
 import com.traceround.backend.user.OAuthIdentity;
 import com.traceround.backend.user.OAuthIdentityRepository;
+import com.traceround.backend.problem.ProblemExecutionSpec;
+import com.traceround.backend.problem.StarterCodeFactory;
+import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -35,6 +39,9 @@ class BackendApplicationTests {
 	@Autowired
 	private PlatformTransactionManager transactionManager;
 
+	@Autowired
+	private StarterCodeFactory starterCodeFactory;
+
 	@Test
 	void contextLoads() {
 	}
@@ -59,5 +66,29 @@ class BackendApplicationTests {
 
 		assertEquals("OAuth Regression", loadedUser.getDisplayName());
 		assertEquals("oauth-regression@example.com", loadedUser.getEmail());
+	}
+
+	@Test
+	void createsEquivalentStarterMethodsForEverySupportedLanguage() {
+		ProblemExecutionSpec spec = new ProblemExecutionSpec(
+			"twoSum",
+			List.of(
+				new ProblemExecutionSpec.Parameter("nums", "INTEGER_ARRAY"),
+				new ProblemExecutionSpec.Parameter("target", "INTEGER")
+			),
+			"INTEGER_ARRAY",
+			null,
+			null,
+			null,
+			null
+		);
+
+		Map<String, String> starters = starterCodeFactory.create(spec);
+
+		assertEquals(4, starters.size());
+		assertEquals(true, starters.get("Python").contains("def twoSum"));
+		assertEquals(true, starters.get("Java").contains("int[] twoSum"));
+		assertEquals(true, starters.get("C++").contains("vector<int> twoSum"));
+		assertEquals(true, starters.get("JavaScript").contains("twoSum(nums, target)"));
 	}
 }

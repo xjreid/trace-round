@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { problems } from '../../data/problems'
 import {
+  getProblem,
   runCodeSubmission,
   sendInterviewChatMessage,
   startProblemSession,
@@ -19,20 +19,41 @@ const FALLBACK_CODING_SECONDS = 20 * 60
 function ProblemDetails() {
   const { slug } = useParams()
   const navigate = useNavigate()
-  const problem = problems.find((item) => item.slug === slug)
+  const [problem, setProblem] = useState(null)
   const [session, setSession] = useState(null)
   const [stage, setStage] = useState('loading')
   const [secondsRemaining, setSecondsRemaining] = useState(0)
   const [messages, setMessages] = useState([])
   const [isInterviewerResponding, setIsInterviewerResponding] = useState(false)
   const [language, setLanguage] = useState(languages[0])
-  const [code, setCode] = useState('')
+  const [codeByLanguage, setCodeByLanguage] = useState({})
+  const code = codeByLanguage[language] ?? ''
   const [runResult, setRunResult] = useState(null)
   const [isRunning, setIsRunning] = useState(false)
   const [submission, setSubmission] = useState(null)
   const [errorMessage, setErrorMessage] = useState('')
   const submissionStarted = useRef(false)
   const interviewAnswers = useRef({ messages, language, code })
+
+  useEffect(() => {
+    let isCurrent = true
+    getProblem(slug)
+      .then((loadedProblem) => {
+        if (isCurrent) {
+          setProblem(loadedProblem)
+          setCodeByLanguage(loadedProblem.starterCode ?? {})
+        }
+      })
+      .catch((error) => {
+        if (isCurrent) {
+          setErrorMessage(error.message)
+          setStage('error')
+        }
+      })
+    return () => {
+      isCurrent = false
+    }
+  }, [slug])
 
   useEffect(() => {
     interviewAnswers.current = { messages, language, code }
@@ -189,16 +210,6 @@ function ProblemDetails() {
     }
   }
 
-  if (!problem) {
-    return (
-      <section className="problem-not-found">
-        <p className="problem-not-found__eyebrow">404</p>
-        <h2>Problem not found</h2>
-        <p>The requested coding problem does not exist.</p>
-      </section>
-    )
-  }
-
   if (stage === 'loading') {
     return (
       <section className="active-problem practice-state">
@@ -258,7 +269,12 @@ function ProblemDetails() {
             language={language}
             code={code}
             onLanguageChange={setLanguage}
-            onCodeChange={setCode}
+            onCodeChange={(updatedCode) =>
+              setCodeByLanguage((current) => ({
+                ...current,
+                [language]: updatedCode,
+              }))
+            }
             onStart={() => finishInterview('submitted')}
             onRun={handleRun}
             actionLabel="Submit interview"

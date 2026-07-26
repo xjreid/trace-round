@@ -6,6 +6,15 @@ api_base="${TRACEROUND_API_BASE:-http://localhost:8080/api}"
 cookie_jar="$(mktemp "${TMPDIR:-/tmp}/traceround-smoke-cookies.XXXXXX")"
 email="smoke-$(date +%s)@example.com"
 password="TraceRoundSmoke123!"
+python_solution='class Solution:
+    def twoSum(self, nums: list[int], target: int) -> list[int]:
+        seen = {}
+        for index, value in enumerate(nums):
+            complement = target - value
+            if complement in seen:
+                return [seen[complement], index]
+            seen[value] = index
+        return []'
 
 cleanup() {
   rm -f "$cookie_jar"
@@ -49,13 +58,15 @@ message="$(json_post "/interview-sessions/$session_id/messages" \
   '{"problemSlug":"two-sum","message":"I would use a hash map for a linear-time solution."}')"
 message_role="$(jq -r '.role' <<<"$message")"
 
-run="$(json_post "/interview-sessions/$session_id/runs" \
-  '{"problemSlug":"two-sum","language":"Python","code":"print(7)"}')"
+run_body="$(jq -n --arg code "$python_solution" \
+  '{problemSlug:"two-sum",language:"Python",code:$code}')"
+run="$(json_post "/interview-sessions/$session_id/runs" "$run_body")"
 run_status="$(jq -r '.status' <<<"$run")"
 run_output="$(jq -r '.output' <<<"$run" | tr -d '\r\n')"
 
-submission="$(json_post "/interview-sessions/$session_id/submit" \
-  '{"answers":[{"problemSlug":"two-sum","language":"Python","code":"print(7)","endedBy":"submitted"}]}')"
+submission_body="$(jq -n --arg code "$python_solution" \
+  '{answers:[{problemSlug:"two-sum",language:"Python",code:$code,endedBy:"submitted"}]}')"
+submission="$(json_post "/interview-sessions/$session_id/submit" "$submission_body")"
 feedback_id="$(jq -r '.feedbackId' <<<"$submission")"
 feedback_status="$(json_get "$api_base/feedback/$feedback_id" | jq -r '.status')"
 saved_submissions="$(json_get "$api_base/me/submissions?limit=4" | jq '.submissions | length')"

@@ -75,6 +75,14 @@ export async function requestPracticeProblemSlugs(categories, questionCount) {
   })
 }
 
+export async function getProblems() {
+  return apiRequest('/problems')
+}
+
+export async function getProblem(problemSlug) {
+  return apiRequest(`/problems/${encodeURIComponent(problemSlug)}`)
+}
+
 export async function startProblemSession(problem) {
   return apiRequest('/interview-sessions/problem', {
     method: 'POST',

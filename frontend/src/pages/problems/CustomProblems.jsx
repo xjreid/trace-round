@@ -3,9 +3,9 @@
 
 
 import './Problems.css'
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
-import { categories } from '../../data/categories'
+import { getProblems } from '../backend-functions-to-be-implemented/backendFunctions'
 import { createInterviewAccessPath } from './interviewNavigation'
 
 const questionOptions = [
@@ -16,11 +16,30 @@ const questionOptions = [
 
 function CustomProblems() {
   const navigate = useNavigate()
+  const [problems, setProblems] = useState([])
   const [selectedCategories, setSelectedCategories] = useState([])
   const [questionCount, setQuestionCount] = useState(1)
   const selectedDuration = questionOptions.find(
     (option) => option.count === questionCount,
   ).duration
+  const categories = useMemo(
+    () => [...new Set(problems.map((problem) => problem.category))].sort(),
+    [problems],
+  )
+
+  useEffect(() => {
+    let isCurrent = true
+    getProblems()
+      .then((loadedProblems) => {
+        if (isCurrent) setProblems(loadedProblems)
+      })
+      .catch(() => {
+        if (isCurrent) setProblems([])
+      })
+    return () => {
+      isCurrent = false
+    }
+  }, [])
 
   function toggleCategory(category) {
     if (selectedCategories.includes(category)) {

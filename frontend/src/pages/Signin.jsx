@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { FaGithub, FaGoogle } from 'react-icons/fa6'
 import { useAuth } from '../context/authContext'
@@ -7,8 +7,11 @@ import {
   signInWithProvider,
 } from './backend-functions-to-be-implemented/backendFunctions'
 import {
+  clearPendingSignInDestination,
+  getPendingSignInDestination,
   isValidInterviewDestination,
   isValidSignInDestination,
+  rememberPendingSignInDestination,
 } from './problems/interviewNavigation'
 import './Signin.css'
 
@@ -30,7 +33,13 @@ function Signin() {
     searchParams.get('oauthError') ?? '',
   )
   const [oauthProviders, setOauthProviders] = useState([])
-  const requestedDestination = searchParams.get('returnTo') ?? ''
+  const oauthRedirectHandled = useRef(false)
+  const queryDestination = searchParams.get('returnTo') ?? ''
+  const [pendingOAuthDestination] = useState(() =>
+    queryDestination ? null : getPendingSignInDestination(),
+  )
+  const requestedDestination =
+    queryDestination || pendingOAuthDestination || ''
   const validDestination = isValidSignInDestination(requestedDestination)
     ? requestedDestination
     : null
@@ -60,6 +69,26 @@ function Signin() {
     }
   }, [])
 
+  useEffect(() => {
+    if (
+      !user ||
+      !pendingOAuthDestination ||
+      !validDestination ||
+      oauthRedirectHandled.current
+    ) {
+      return
+    }
+
+    oauthRedirectHandled.current = true
+    clearPendingSignInDestination()
+    navigate(validDestination, {
+      replace: true,
+      state: isValidInterviewDestination(validDestination)
+        ? { interviewAccess: 'authenticated' }
+        : undefined,
+    })
+  }, [navigate, pendingOAuthDestination, user, validDestination])
+
   const handleSubmit = async (event) => {
     event.preventDefault()
     setIsSubmitting(true)
@@ -71,6 +100,7 @@ function Signin() {
       } else {
         await signIn({ email, password })
       }
+      clearPendingSignInDestination()
       navigate(destination, {
         replace: true,
         state: interviewDestination
@@ -216,7 +246,10 @@ function Signin() {
             <button
               type="button"
               disabled={!enabled}
-              onClick={() => signInWithProvider(id)}
+              onClick={() => {
+                rememberPendingSignInDestination(validDestination)
+                signInWithProvider(id)
+              }}
               aria-describedby="social-signin-notice"
               key={id}
             >

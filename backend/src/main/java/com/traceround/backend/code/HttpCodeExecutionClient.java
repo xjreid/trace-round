@@ -1,6 +1,8 @@
 package com.traceround.backend.code;
 
-import java.util.Map;
+import com.traceround.backend.problem.Problem;
+import com.traceround.backend.problem.ProblemExecutionSpec;
+import java.util.List;
 import java.util.Set;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -23,7 +25,13 @@ public class HttpCodeExecutionClient implements CodeExecutionClient {
     }
 
     @Override
-    public CodeExecutionResult execute(String language, String code) {
+    public CodeExecutionResult execute(
+        Problem problem,
+        ProblemExecutionSpec spec,
+        List<TestCase> testCases,
+        String language,
+        String code
+    ) {
         if (!ALLOWED_LANGUAGES.contains(language)) {
             return new CodeExecutionResult(
                 "error",
@@ -36,12 +44,27 @@ public class HttpCodeExecutionClient implements CodeExecutionClient {
         try {
             CodeExecutionResult result = restClient.post()
                 .uri("/execute")
-                .body(Map.of("language", language, "code", code))
+                .body(new ExecutionRequest(
+                    language,
+                    code,
+                    problem.getSlug(),
+                    spec,
+                    testCases
+                ))
                 .retrieve()
                 .body(CodeExecutionResult.class);
             return result == null ? CodeExecutionResult.unavailable() : result;
         } catch (RestClientException exception) {
             return CodeExecutionResult.unavailable();
         }
+    }
+
+    private record ExecutionRequest(
+        String language,
+        String code,
+        String problemSlug,
+        ProblemExecutionSpec spec,
+        List<TestCase> testCases
+    ) {
     }
 }

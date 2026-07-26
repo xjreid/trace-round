@@ -1,8 +1,21 @@
 package com.traceround.backend.code;
 
+import com.traceround.backend.problem.Problem;
+import com.traceround.backend.problem.ProblemExecutionSpec;
+import java.util.List;
+
 public interface CodeExecutionClient {
 
-    CodeExecutionResult execute(String language, String code);
+    CodeExecutionResult execute(
+        Problem problem,
+        ProblemExecutionSpec spec,
+        List<TestCase> testCases,
+        String language,
+        String code
+    );
+
+    record TestCase(int order, String inputsJson, String expectedJson) {
+    }
 
     record CodeExecutionResult(
         String status,

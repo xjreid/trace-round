@@ -5,12 +5,15 @@ import com.traceround.backend.ai.InterviewAiClient.TranscriptMessage;
 import com.traceround.backend.auth.CurrentUserService;
 import com.traceround.backend.code.CodeExecutionClient;
 import com.traceround.backend.code.CodeExecutionClient.CodeExecutionResult;
+import com.traceround.backend.code.CodeExecutionClient.TestCase;
 import com.traceround.backend.interview.InterviewDtos.Durations;
 import com.traceround.backend.interview.InterviewDtos.MessageResponse;
 import com.traceround.backend.interview.InterviewDtos.QuestionSession;
 import com.traceround.backend.interview.InterviewDtos.SessionResponse;
 import com.traceround.backend.problem.Problem;
+import com.traceround.backend.problem.ProblemCatalogService;
 import com.traceround.backend.problem.ProblemRepository;
+import com.traceround.backend.problem.ProblemTestCaseRepository;
 import com.traceround.backend.user.AppUser;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -29,6 +32,8 @@ import org.springframework.web.server.ResponseStatusException;
 public class InterviewService {
 
     private final ProblemRepository problems;
+    private final ProblemCatalogService problemCatalog;
+    private final ProblemTestCaseRepository problemTestCases;
     private final InterviewSessionRepository sessions;
     private final InterviewQuestionRepository questions;
     private final ChatMessageRepository messages;
@@ -38,6 +43,8 @@ public class InterviewService {
 
     public InterviewService(
         ProblemRepository problems,
+        ProblemCatalogService problemCatalog,
+        ProblemTestCaseRepository problemTestCases,
         InterviewSessionRepository sessions,
         InterviewQuestionRepository questions,
         ChatMessageRepository messages,
@@ -46,6 +53,8 @@ public class InterviewService {
         CodeExecutionClient codeExecution
     ) {
         this.problems = problems;
+        this.problemCatalog = problemCatalog;
+        this.problemTestCases = problemTestCases;
         this.sessions = sessions;
         this.questions = questions;
         this.messages = messages;
@@ -56,10 +65,14 @@ public class InterviewService {
 
     @Transactional(readOnly = true)
     public List<String> selectProblems(Set<String> categories, int count) {
-        List<Problem> matching = new ArrayList<>(problems.findByCategoryIn(categories));
+        List<Problem> matching = new ArrayList<>(
+            problems.findByCategoryInAndEnabledTrue(categories)
+        );
         Collections.shuffle(matching);
         if (matching.size() < count) {
-            List<Problem> others = new ArrayList<>(problems.findAll());
+            List<Problem> others = new ArrayList<>(
+                problems.findByEnabledTrueOrderByTitleAsc()
+            );
             others.removeIf(problem -> categories.contains(problem.getCategory()));
             Collections.shuffle(others);
             matching.addAll(others);
@@ -124,8 +137,30 @@ public class InterviewService {
     ) {
         InterviewSession session = requireAccessibleSession(sessionId, authentication);
         ensureActive(session);
-        requireQuestion(sessionId, problemSlug);
-        return codeExecution.execute(language, code);
+        InterviewQuestion question = requireQuestion(sessionId, problemSlug);
+        List<TestCase> tests = problemTestCases
+            .findByProblemSlugOrderByTestOrder(problemSlug)
+            .stream()
+            .map(test -> new TestCase(
+                test.getTestOrder(),
+                test.getInputsJson(),
+                test.getExpectedJson()
+            ))
+            .toList();
+        if (tests.isEmpty()) {
+            throw new ResponseStatusException(
+                HttpStatus.CONFLICT,
+                "This problem does not have executable test cases."
+            );
+        }
+        Problem problem = question.getProblem();
+        return codeExecution.execute(
+            problem,
+            problemCatalog.spec(problem),
+            tests,
+            language,
+            code
+        );
     }
 
     @Transactional
@@ -204,9 +239,7 @@ public class InterviewService {
     }
 
     private Problem requireProblem(String slug) {
-        return problems.findById(slug).orElseThrow(() ->
-            new ResponseStatusException(HttpStatus.NOT_FOUND, "Problem not found.")
-        );
+        return problemCatalog.requireEntity(slug);
     }
 
     private InterviewQuestion requireQuestion(UUID sessionId, String problemSlug) {
