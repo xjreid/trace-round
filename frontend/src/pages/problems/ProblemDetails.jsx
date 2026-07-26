@@ -168,6 +168,7 @@ function ProblemDetails() {
     }
     const updatedConversation = [...messages, userMessage]
 
+    setErrorMessage('')
     setMessages(updatedConversation)
     setIsInterviewerResponding(true)
 
@@ -181,6 +182,9 @@ function ProblemDetails() {
 
       setMessages((current) => [...current, interviewerMessage])
     } catch (error) {
+      setMessages((current) =>
+        current.filter((message) => message.id !== userMessage.id),
+      )
       setErrorMessage(error.message)
     } finally {
       setIsInterviewerResponding(false)
@@ -254,6 +258,7 @@ function ProblemDetails() {
             messages={messages}
             onSendMessage={handleSendMessage}
             isInterviewerResponding={isInterviewerResponding}
+            errorMessage={errorMessage}
           />
         </>
       ) : (

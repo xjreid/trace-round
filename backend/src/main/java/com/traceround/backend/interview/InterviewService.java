@@ -14,6 +14,9 @@ import com.traceround.backend.problem.Problem;
 import com.traceround.backend.problem.ProblemCatalogService;
 import com.traceround.backend.problem.ProblemRepository;
 import com.traceround.backend.problem.ProblemTestCaseRepository;
+import com.traceround.backend.quota.AiQuotaService;
+import com.traceround.backend.quota.QuotaIdentity;
+import com.traceround.backend.quota.QuotaIdentityResolver;
 import com.traceround.backend.user.AppUser;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -40,6 +43,8 @@ public class InterviewService {
     private final CurrentUserService currentUsers;
     private final InterviewAiClient ai;
     private final CodeExecutionClient codeExecution;
+    private final AiQuotaService quotas;
+    private final QuotaIdentityResolver quotaIdentities;
 
     public InterviewService(
         ProblemRepository problems,
@@ -50,7 +55,9 @@ public class InterviewService {
         ChatMessageRepository messages,
         CurrentUserService currentUsers,
         InterviewAiClient ai,
-        CodeExecutionClient codeExecution
+        CodeExecutionClient codeExecution,
+        AiQuotaService quotas,
+        QuotaIdentityResolver quotaIdentities
     ) {
         this.problems = problems;
         this.problemCatalog = problemCatalog;
@@ -61,6 +68,8 @@ public class InterviewService {
         this.currentUsers = currentUsers;
         this.ai = ai;
         this.codeExecution = codeExecution;
+        this.quotas = quotas;
+        this.quotaIdentities = quotaIdentities;
     }
 
     @Transactional(readOnly = true)
@@ -81,9 +90,18 @@ public class InterviewService {
     }
 
     @Transactional
-    public SessionResponse startSingle(String slug, Authentication authentication) {
+    public SessionResponse startSingle(
+        String slug,
+        Authentication authentication,
+        String remoteAddress
+    ) {
         Problem problem = requireProblem(slug);
-        return createSession(List.of(problem), Set.of(problem.getCategory()), false, authentication);
+        AppUser user = currentUsers.find(authentication).orElse(null);
+        quotas.reserveInterview(
+            1,
+            quotaIdentities.resolve(remoteAddress, user)
+        );
+        return createSession(List.of(problem), Set.of(problem.getCategory()), false, user);
     }
 
     @Transactional
@@ -91,7 +109,8 @@ public class InterviewService {
         List<String> slugs,
         Set<String> categories,
         int questionCount,
-        Authentication authentication
+        Authentication authentication,
+        String remoteAddress
     ) {
         if (slugs.size() != questionCount || new HashSet<>(slugs).size() != slugs.size()) {
             throw new ResponseStatusException(
@@ -100,7 +119,12 @@ public class InterviewService {
             );
         }
         List<Problem> selected = slugs.stream().map(this::requireProblem).toList();
-        return createSession(selected, categories, true, authentication);
+        AppUser user = currentUsers.find(authentication).orElse(null);
+        quotas.reserveInterview(
+            selected.size(),
+            quotaIdentities.resolve(remoteAddress, user)
+        );
+        return createSession(selected, categories, true, user);
     }
 
     @Transactional
@@ -108,11 +132,17 @@ public class InterviewService {
         UUID sessionId,
         String problemSlug,
         String content,
-        Authentication authentication
+        Authentication authentication,
+        String remoteAddress
     ) {
         InterviewSession session = requireAccessibleSession(sessionId, authentication);
         ensureActive(session);
         InterviewQuestion question = requireQuestion(sessionId, problemSlug);
+        QuotaIdentity identity = quotaIdentities.resolve(
+            remoteAddress,
+            session.getUser()
+        );
+        quotas.consumeMessage(question.getId(), identity);
         ChatMessage userMessage = messages.save(new ChatMessage(question, "user", content.trim()));
         question.addMessage(userMessage);
 
@@ -198,9 +228,8 @@ public class InterviewService {
         List<Problem> selected,
         Set<String> categories,
         boolean custom,
-        Authentication authentication
+        AppUser user
     ) {
-        AppUser user = currentUsers.find(authentication).orElse(null);
         InterviewSession session = sessions.save(
             new InterviewSession(user, custom, categories)
         );

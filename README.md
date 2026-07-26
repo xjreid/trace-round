@@ -145,14 +145,49 @@ usable without an API key. The backend reads these environment variables:
 TRACEROUND_AI_PROVIDER
 TRACEROUND_AI_API_KEY
 TRACEROUND_AI_MODEL
+TRACEROUND_AI_TIMEOUT_SECONDS
 ```
 
 The provider interface is isolated in
-`backend/src/main/java/com/traceround/backend/ai`. Once Gemini or Grok is
-selected, its adapter can be added there without changing controllers,
-database entities, or the frontend. Selecting `gemini` currently fails fast
-with a clear configuration message because a real provider adapter has not yet
-been chosen.
+`backend/src/main/java/com/traceround/backend/ai`. Gemini is implemented using
+Google's Interactions API with provider-neutral interview prompts, structured
+feedback validation, bounded context, and `store=false`. Enable it with:
+
+```text
+TRACEROUND_AI_PROVIDER=gemini
+TRACEROUND_AI_API_KEY=<your Google AI Studio key>
+TRACEROUND_AI_MODEL=<an available Gemini model ID>
+```
+
+Keep these values in the untracked `.env` file locally and in Render secrets
+after deployment. Other providers can implement the same `InterviewAiClient`
+contract without changing controllers, database entities, or the frontend.
+
+## AI quotas and rate limits
+
+AI admission is enforced with atomic PostgreSQL counters, so the same limits
+work across multiple backend instances. Starting an interview reserves enough
+daily capacity for all initial prompts, the configured number of discussion
+messages per question, and final feedback. When the daily capacity is full,
+only new interviews are blocked; already-admitted interviews can finish.
+
+The defaults can be adjusted with:
+
+```text
+AI_QUOTAS_ENABLED=true
+AI_DAILY_QUOTA_UNITS=1000
+AI_MAX_MESSAGES_PER_QUESTION=6
+AI_IP_INTERVIEWS_PER_HOUR=10
+AI_ACCOUNT_INTERVIEWS_PER_HOUR=20
+AI_IP_MESSAGES_PER_MINUTE=20
+AI_ACCOUNT_MESSAGES_PER_MINUTE=30
+AI_QUOTA_HASH_SALT=<long-random-production-secret>
+```
+
+IP addresses and account IDs are stored only as salted SHA-256 hashes. Set a
+stable, private `AI_QUOTA_HASH_SALT` in Render so counters remain consistent
+across restarts. Rate-limit responses use HTTP 429 and include `Retry-After`
+when a timed window has a known reset.
 
 ## Code execution safety
 

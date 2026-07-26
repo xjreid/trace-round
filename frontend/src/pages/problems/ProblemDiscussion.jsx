@@ -38,6 +38,7 @@ function ProblemDiscussion({
   messages,
   onSendMessage,
   isInterviewerResponding,
+  errorMessage,
 }) {
   const [draft, setDraft] = useState('')
 
@@ -93,6 +94,11 @@ function ProblemDiscussion({
         </div>
 
         <form className="discussion-composer" onSubmit={handleSubmit}>
+          {errorMessage && (
+            <p className="discussion-composer__error" role="alert">
+              {errorMessage}
+            </p>
+          )}
           <label htmlFor="interview-message">Message the interviewer</label>
           <textarea
             id="interview-message"

@@ -653,6 +653,13 @@
   border-radius: 9px;
 }
 
+.discussion-composer__error {
+  margin: 0;
+  color: #b42318;
+  font-size: 0.86rem;
+  line-height: 1.4;
+}
+
 .discussion-composer > label {
   position: absolute;
   width: 1px;

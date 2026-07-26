@@ -24,6 +24,9 @@ async function parseResponse(response) {
             : `Request failed with status ${response.status}.`
     const error = new Error(message)
     error.status = response.status
+    error.code =
+      typeof payload === 'object' && payload?.code ? payload.code : null
+    error.retryAfter = response.headers.get('retry-after')
     throw error
   }
 

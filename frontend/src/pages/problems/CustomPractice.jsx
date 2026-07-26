@@ -52,6 +52,7 @@ function CustomPractice() {
   const [isInterviewerResponding, setIsInterviewerResponding] = useState(false)
   const [isRunning, setIsRunning] = useState(false)
   const [submission, setSubmission] = useState(null)
+  const [errorMessage, setErrorMessage] = useState('')
   const submissionStarted = useRef(false)
   const questionTransitionStarted = useRef(false)
   const questionStatesRef = useRef(questionStates)
@@ -111,8 +112,9 @@ function CustomPractice() {
           )
           setStage('discussion')
         }
-      } catch {
+      } catch (error) {
         if (isCurrentRequest) {
+          setErrorMessage(error.message)
           setStage('error')
         }
       }
@@ -214,9 +216,10 @@ function CustomPractice() {
 
         setSubmission(completedSubmission)
         setStage('ended')
-      } catch {
+      } catch (error) {
         submissionStarted.current = false
         questionTransitionStarted.current = false
+        setErrorMessage(error.message)
         setStage('error')
       }
     },
@@ -267,6 +270,7 @@ function CustomPractice() {
       userMessage,
     ]
 
+    setErrorMessage('')
     updateQuestionState(problemSlug, { messages: updatedConversation })
     setIsInterviewerResponding(true)
 
@@ -281,6 +285,13 @@ function CustomPractice() {
       updateQuestionState(problemSlug, (currentState) => ({
         messages: [...currentState.messages, interviewerMessage],
       }))
+    } catch (error) {
+      updateQuestionState(problemSlug, (currentState) => ({
+        messages: currentState.messages.filter(
+          (message) => message.id !== userMessage.id,
+        ),
+      }))
+      setErrorMessage(error.message)
     } finally {
       setIsInterviewerResponding(false)
     }
@@ -315,7 +326,10 @@ function CustomPractice() {
       <section className="active-problem practice-state">
         <p className="practice-state__eyebrow">Custom interview</p>
         <h2>Unable to create this interview</h2>
-        <p>Please return to the custom interview builder and try again.</p>
+        <p>
+          {errorMessage ||
+            'Please return to the custom interview builder and try again.'}
+        </p>
       </section>
     )
   }
@@ -361,6 +375,7 @@ function CustomPractice() {
             messages={activeQuestionState.messages}
             onSendMessage={handleSendMessage}
             isInterviewerResponding={isInterviewerResponding}
+            errorMessage={errorMessage}
           />
         </>
       ) : (

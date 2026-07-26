@@ -9,6 +9,7 @@ import com.traceround.backend.interview.InterviewDtos.SessionResponse;
 import com.traceround.backend.interview.InterviewDtos.StartCustomRequest;
 import com.traceround.backend.interview.InterviewDtos.StartProblemRequest;
 import jakarta.validation.Valid;
+import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.security.core.Authentication;
@@ -38,21 +39,28 @@ public class InterviewController {
     @PostMapping("/interview-sessions/problem")
     public SessionResponse startProblem(
         @Valid @RequestBody StartProblemRequest request,
-        Authentication authentication
+        Authentication authentication,
+        HttpServletRequest httpRequest
     ) {
-        return interviews.startSingle(request.problemSlug(), authentication);
+        return interviews.startSingle(
+            request.problemSlug(),
+            authentication,
+            httpRequest.getRemoteAddr()
+        );
     }
 
     @PostMapping("/interview-sessions/custom")
     public SessionResponse startCustom(
         @Valid @RequestBody StartCustomRequest request,
-        Authentication authentication
+        Authentication authentication,
+        HttpServletRequest httpRequest
     ) {
         return interviews.startCustom(
             request.selectedProblemSlugs(),
             request.categories(),
             request.questionCount(),
-            authentication
+            authentication,
+            httpRequest.getRemoteAddr()
         );
     }
 
@@ -60,13 +68,15 @@ public class InterviewController {
     public MessageResponse message(
         @PathVariable UUID sessionId,
         @Valid @RequestBody MessageRequest request,
-        Authentication authentication
+        Authentication authentication,
+        HttpServletRequest httpRequest
     ) {
         return interviews.sendMessage(
             sessionId,
             request.problemSlug(),
             request.message(),
-            authentication
+            authentication,
+            httpRequest.getRemoteAddr()
         );
     }
 
