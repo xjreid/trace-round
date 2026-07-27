@@ -410,6 +410,22 @@
   caret-color: #4dd7f5;
 }
 
+.code-editor__input .cm-gutters {
+  color: #526178;
+  background: #070c15;
+  border-right: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.code-editor__input .cm-lineNumbers {
+  min-width: 46px;
+}
+
+.code-editor__input .cm-lineNumbers .cm-gutterElement {
+  min-width: 46px;
+  padding: 0 12px 0 8px;
+  text-align: right;
+}
+
 .code-editor__input .cm-line {
   padding: 0 22px;
 }

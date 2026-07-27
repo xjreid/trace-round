@@ -86,9 +86,12 @@ class BackendApplicationTests {
 		Map<String, String> starters = starterCodeFactory.create(spec);
 
 		assertEquals(4, starters.size());
-		assertEquals(true, starters.get("Python").contains("def twoSum"));
-		assertEquals(true, starters.get("Java").contains("int[] twoSum"));
-		assertEquals(true, starters.get("C++").contains("vector<int> twoSum"));
-		assertEquals(true, starters.get("JavaScript").contains("twoSum(nums, target)"));
+		assertEquals(true, starters.get("Python").contains("\n    def twoSum"));
+		assertEquals(true, starters.get("Java").contains("\n    public int[] twoSum"));
+		assertEquals(true, starters.get("C++").contains("\n    vector<int> twoSum"));
+		assertEquals(
+			true,
+			starters.get("JavaScript").contains("\n    twoSum(nums, target)")
+		);
 	}
 }

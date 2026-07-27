@@ -15,6 +15,7 @@ import com.traceround.backend.problem.ProblemCatalogService;
 import com.traceround.backend.problem.ProblemRepository;
 import com.traceround.backend.problem.ProblemTestCaseRepository;
 import com.traceround.backend.quota.AiQuotaService;
+import com.traceround.backend.quota.CodeExecutionQuotaService;
 import com.traceround.backend.quota.QuotaIdentity;
 import com.traceround.backend.quota.QuotaIdentityResolver;
 import com.traceround.backend.user.AppUser;
@@ -44,6 +45,7 @@ public class InterviewService {
     private final InterviewAiClient ai;
     private final CodeExecutionClient codeExecution;
     private final AiQuotaService quotas;
+    private final CodeExecutionQuotaService codeQuotas;
     private final QuotaIdentityResolver quotaIdentities;
 
     public InterviewService(
@@ -57,6 +59,7 @@ public class InterviewService {
         InterviewAiClient ai,
         CodeExecutionClient codeExecution,
         AiQuotaService quotas,
+        CodeExecutionQuotaService codeQuotas,
         QuotaIdentityResolver quotaIdentities
     ) {
         this.problems = problems;
@@ -69,6 +72,7 @@ public class InterviewService {
         this.ai = ai;
         this.codeExecution = codeExecution;
         this.quotas = quotas;
+        this.codeQuotas = codeQuotas;
         this.quotaIdentities = quotaIdentities;
     }
 
@@ -157,13 +161,14 @@ public class InterviewService {
         return MessageResponse.from(interviewer);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public CodeExecutionResult runCode(
         UUID sessionId,
         String problemSlug,
         String language,
         String code,
-        Authentication authentication
+        Authentication authentication,
+        String remoteAddress
     ) {
         InterviewSession session = requireAccessibleSession(sessionId, authentication);
         ensureActive(session);
@@ -184,6 +189,9 @@ public class InterviewService {
             );
         }
         Problem problem = question.getProblem();
+        codeQuotas.consume(
+            quotaIdentities.resolve(remoteAddress, currentUsers.find(authentication).orElse(null))
+        );
         return codeExecution.execute(
             problem,
             problemCatalog.spec(problem),

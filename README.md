@@ -1,7 +1,7 @@
 # TraceRound
 
 TraceRound is a coding interview practice platform built with React, Spring Boot,
-PostgreSQL, and an isolated local code-runner service.
+PostgreSQL, and a replaceable code-execution provider.
 
 ## What is implemented
 
@@ -12,7 +12,7 @@ PostgreSQL, and an isolated local code-runner service.
 - Email/password accounts with BCrypt password hashing
 - Database-backed, HttpOnly login sessions and CSRF protection
 - Optional Google and GitHub OAuth configuration
-- Local execution for JavaScript, Python, Java, and C++
+- JavaScript, Python, Java, and C++ execution through Docker, Judge0, or JDoodle
 - A replaceable AI interface with a key-free mock interviewer
 - User submission history and aggregate scores
 - Flyway database migrations
@@ -20,13 +20,13 @@ PostgreSQL, and an isolated local code-runner service.
 ## Architecture
 
 The React app calls the Spring Boot JSON API. Spring Boot stores application and
-login-session data in PostgreSQL. Code is sent to a separate Docker service
-instead of being executed by the Spring process.
+login-session data in PostgreSQL. Code is sent to the configured execution
+provider instead of being executed by the Spring process.
 
 ```text
 React :5173 -> Spring Boot :8080 -> PostgreSQL :5432
                               |
-                              +-> code-runner :8090
+                              +-> local Docker, Judge0, or JDoodle
 ```
 
 Docker Compose is used locally because it starts PostgreSQL and the code runner
@@ -72,6 +72,13 @@ The local defaults in
 [application.properties](backend/src/main/resources/application.properties)
 match `compose.yaml`, so copying `.env.example` is optional unless you want to
 change settings.
+
+To use managed Judge0 or JDoodle instead of the local code-runner, PostgreSQL
+is the only Docker service required:
+
+```bash
+docker compose up -d postgres
+```
 
 ### Verify the complete backend flow
 
@@ -191,9 +198,11 @@ when a timed window has a known reset.
 
 ## Code execution safety
 
-The local code runner is a separate read-only Docker container with memory,
-CPU, process, output, and time limits. It supports only JavaScript, Python,
-Java, and C++.
+`CodeExecutionClient` keeps three execution providers behind one backend
+interface. The local provider is a separate read-only Docker container with
+memory, CPU, process, output, and time limits. Judge0 and JDoodle send an
+isolated, generated program to their managed APIs. All providers support only
+JavaScript, Python, Java, and C++.
 
 This runner is appropriate for local development, not for executing hostile
 public code in production. A production deployment should use a dedicated
@@ -210,6 +219,68 @@ The initial catalog intentionally excludes SQL, shell, concurrency, system
 design, stateful class-design, and randomized problems. It supports regular
 functions plus arrays, strings, matrices, linked lists, binary trees, and
 graph/grid inputs.
+
+### Enable managed Judge0
+
+Subscribe to the managed Judge0 API, copy `.env.example` to `.env`, and place
+the values from its API dashboard in the untracked `.env`:
+
+```text
+CODE_EXECUTION_PROVIDER=judge0
+JUDGE0_API_URL=https://judge0-ce.p.rapidapi.com
+JUDGE0_API_KEY=<your private key>
+JUDGE0_API_HOST=judge0-ce.p.rapidapi.com
+JUDGE0_AUTH_MODE=rapidapi
+```
+
+Restart Spring Boot after changing these values. The key is read only by
+Spring Boot and is never returned to the browser. The default language IDs are
+configurable with `JUDGE0_JAVASCRIPT_LANGUAGE_ID`,
+`JUDGE0_PYTHON_LANGUAGE_ID`, `JUDGE0_JAVA_LANGUAGE_ID`, and
+`JUDGE0_CPP_LANGUAGE_ID` if the managed service lists different compiler
+versions.
+
+When starting Spring Boot from a new terminal, load the root `.env` first:
+
+```bash
+cd backend
+set -a
+source ../.env
+set +a
+./mvnw spring-boot:run
+```
+
+Every Run click combines all server-side test cases into one Judge0 submission.
+PostgreSQL-backed limits default to 45 total submissions per day, 20 per IP,
+30 per account, and short per-minute burst limits. This leaves a small buffer
+on a 50-submission plan. Adjust the `CODE_EXECUTION_*` variables in
+`.env.example` if the plan or reset timezone changes.
+
+Keep `CODE_EXECUTION_PROVIDER=local` until a live run succeeds with your key.
+The Docker runner remains a development fallback and can be removed from
+`compose.yaml` after that verification.
+
+### Enable managed JDoodle
+
+Create a JDoodle account, subscribe to its free Compiler API plan, and copy the
+Client ID and Secret from the API dashboard into the untracked `.env`:
+
+```text
+CODE_EXECUTION_PROVIDER=jdoodle
+JDOODLE_API_URL=https://api.jdoodle.com/v1
+JDOODLE_CLIENT_ID=<your client ID>
+JDOODLE_CLIENT_SECRET=<your private secret>
+```
+
+Load `.env` and restart Spring Boot using the commands above. TraceRound uses
+Node 20, Python 3.11, Java 21, and C++17 by default; every runtime code and
+version index can be overridden with the `JDOODLE_*_LANGUAGE` and
+`JDOODLE_*_VERSION_INDEX` variables if JDoodle changes its catalog.
+
+JDoodle currently provides 20 free API credits per day. TraceRound defaults to
+18 JDoodle runs per day, leaving two credits for testing or provider-side
+accounting. One Run click still bundles every problem test case into one API
+request.
 
 ## Neon, Render, and Vercel later
 
@@ -233,8 +304,14 @@ settings are:
 FRONTEND_URL=https://<your-vercel-site>
 SESSION_COOKIE_SECURE=true
 SESSION_COOKIE_SAME_SITE=none
-CODE_RUNNER_BASE_URL=<production-runner-url>
+CODE_EXECUTION_PROVIDER=judge0
+JUDGE0_API_URL=<managed-api-url>
+JUDGE0_API_KEY=<Render secret>
+JUDGE0_API_HOST=<managed-api-host>
 ```
+
+For JDoodle, use `CODE_EXECUTION_PROVIDER=jdoodle` and store
+`JDOODLE_CLIENT_ID` and `JDOODLE_CLIENT_SECRET` as Render secrets instead.
 
 Set `VITE_API_BASE_URL` and `VITE_BACKEND_ORIGIN` in Vercel to the Render
 backend URL. Before public launch, use a custom same-site API domain where

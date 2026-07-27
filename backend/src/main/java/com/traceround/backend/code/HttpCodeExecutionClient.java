@@ -4,12 +4,18 @@ import com.traceround.backend.problem.Problem;
 import com.traceround.backend.problem.ProblemExecutionSpec;
 import java.util.List;
 import java.util.Set;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 @Component
+@ConditionalOnProperty(
+    name = "traceround.code-execution.provider",
+    havingValue = "local",
+    matchIfMissing = true
+)
 public class HttpCodeExecutionClient implements CodeExecutionClient {
 
     private static final Set<String> ALLOWED_LANGUAGES =

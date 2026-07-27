@@ -84,14 +84,16 @@ public class InterviewController {
     public CodeExecutionResult run(
         @PathVariable UUID sessionId,
         @Valid @RequestBody RunRequest request,
-        Authentication authentication
+        Authentication authentication,
+        HttpServletRequest httpRequest
     ) {
         return interviews.runCode(
             sessionId,
             request.problemSlug(),
             request.language(),
             request.code(),
-            authentication
+            authentication,
+            httpRequest.getRemoteAddr()
         );
     }
 }

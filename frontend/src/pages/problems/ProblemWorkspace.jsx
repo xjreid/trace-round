@@ -1,6 +1,8 @@
 import CodeMirror from '@uiw/react-codemirror'
 import {
+  editorExtensions,
   editorSetup,
+  editorTheme,
   languageExtensions,
   languages,
 } from './problemEditorConfig'
@@ -101,10 +103,13 @@ function ProblemWorkspace({
             value={code}
             onChange={onCodeChange}
             placeholder={`Write your ${language} solution here...`}
-            extensions={languageExtensions[language]}
+            extensions={[
+              ...(languageExtensions[language] ?? []),
+              ...editorExtensions(language),
+            ]}
             basicSetup={editorSetup}
             indentWithTab
-            theme="dark"
+            theme={editorTheme}
             height="100%"
             aria-label={`${language} code editor`}
           />

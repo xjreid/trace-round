@@ -163,10 +163,10 @@ public class StarterCodeFactory {
         if (uses(spec, "LIST_NODE")) {
             code.append("""
                 class ListNode {
-                  constructor(val = 0, next = null) {
-                    this.val = val
-                    this.next = next
-                  }
+                    constructor(val = 0, next = null) {
+                        this.val = val
+                        this.next = next
+                    }
                 }
 
                 """);
@@ -174,11 +174,11 @@ public class StarterCodeFactory {
         if (uses(spec, "TREE_NODE")) {
             code.append("""
                 class TreeNode {
-                  constructor(val = 0, left = null, right = null) {
-                    this.val = val
-                    this.left = left
-                    this.right = right
-                  }
+                    constructor(val = 0, left = null, right = null) {
+                        this.val = val
+                        this.left = left
+                        this.right = right
+                    }
                 }
 
                 """);
@@ -187,14 +187,14 @@ public class StarterCodeFactory {
             .map(ProblemExecutionSpec.Parameter::name)
             .collect(Collectors.joining(", "));
         code.append("class Solution {\n")
-            .append("  ").append(spec.method()).append("(").append(parameters)
+            .append("    ").append(spec.method()).append("(").append(parameters)
             .append(") {\n")
-            .append("    // Write your solution here.\n");
+            .append("        // Write your solution here.\n");
         if (!"VOID".equals(spec.returnType())) {
-            code.append("    return ").append(javascriptDefault(spec.returnType()))
+            code.append("        return ").append(javascriptDefault(spec.returnType()))
                 .append("\n");
         }
-        code.append("  }\n}\n");
+        code.append("    }\n}\n");
         return code.toString();
     }
 
