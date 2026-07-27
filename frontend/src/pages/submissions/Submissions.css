@@ -117,13 +117,6 @@
   border-color: rgba(77, 215, 245, 0.24);
 }
 
-.submissions-development-note {
-  margin: 22px 0 0;
-  color: #5f6f84;
-  font-size: 9px;
-  line-height: 1.55;
-}
-
 .submissions-state-card {
   width: min(500px, 100%);
 }

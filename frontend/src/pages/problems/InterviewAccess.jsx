@@ -124,10 +124,6 @@ function InterviewAccess() {
           </article>
         </div>
 
-        <p className="access-development-note">
-          Demo sign-in currently uses TraceRound&apos;s temporary local user
-          until backend authentication is connected.
-        </p>
       </div>
     </section>
   )

@@ -209,14 +209,6 @@
   outline-offset: 3px;
 }
 
-.access-development-note {
-  margin: 22px 0 0;
-  color: #59697f;
-  font-size: 9px;
-  line-height: 1.5;
-  text-align: center;
-}
-
 .interview-access-card--signed-in {
   width: min(520px, 100%);
   padding-top: 50px;

@@ -108,7 +108,7 @@ function ProblemDiscussion({
             rows="3"
           />
           <div>
-            <span>Discussion responses are temporary development data.</span>
+            <span>Messages are saved with this interview.</span>
             <button
               type="submit"
               disabled={!draft.trim() || isInterviewerResponding}

@@ -266,7 +266,7 @@ function Signin() {
           configured in the backend.
         </p>
 
-        <div className="temporary-auth-note">
+        <div className="auth-security-note">
           <strong>Secure backend authentication</strong>
           <p>
             Passwords are hashed by Spring Security and the browser receives

@@ -25,7 +25,7 @@ public class CodeExecutionQuotaService {
     public CodeExecutionQuotaService(
         AiQuotaCounter counters,
         CodeExecutionQuotaProperties properties,
-        @Value("${traceround.code-execution.provider:local}") String provider
+        @Value("${traceround.code-execution.provider:jdoodle}") String provider
     ) {
         this(counters, properties, provider, Clock.systemUTC());
     }

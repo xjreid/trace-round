@@ -26,12 +26,12 @@ provider instead of being executed by the Spring process.
 ```text
 React :5173 -> Spring Boot :8080 -> PostgreSQL :5432
                               |
-                              +-> local Docker, Judge0, or JDoodle
+                              +-> JDoodle (configured execution provider)
 ```
 
-Docker Compose is used locally because it starts PostgreSQL and the code runner
-with repeatable versions, ports, storage, and resource limits. You still run
-Spring Boot and Vite normally, which keeps development reloads fast.
+Docker Compose is used locally to start PostgreSQL with repeatable versions,
+ports, and storage. Code execution is sent to JDoodle, so no local code-runner
+container is required.
 
 ## Requirements
 
@@ -45,10 +45,10 @@ Maven does not need to be installed; the repository includes the Maven wrapper.
 
 1. Start Docker Desktop.
 
-2. From the repository root, start PostgreSQL and the code runner:
+2. From the repository root, start PostgreSQL:
 
    ```bash
-   docker compose up -d --build
+   docker compose up -d postgres
    ```
 
 3. In a second terminal, start Spring Boot:
@@ -72,13 +72,6 @@ The local defaults in
 [application.properties](backend/src/main/resources/application.properties)
 match `compose.yaml`, so copying `.env.example` is optional unless you want to
 change settings.
-
-To use managed Judge0 or JDoodle instead of the local code-runner, PostgreSQL
-is the only Docker service required:
-
-```bash
-docker compose up -d postgres
-```
 
 ### Verify the complete backend flow
 
@@ -303,19 +296,16 @@ settings are:
 ```text
 FRONTEND_URL=https://<your-vercel-site>
 SESSION_COOKIE_SECURE=true
-SESSION_COOKIE_SAME_SITE=none
-CODE_EXECUTION_PROVIDER=judge0
-JUDGE0_API_URL=<managed-api-url>
-JUDGE0_API_KEY=<Render secret>
-JUDGE0_API_HOST=<managed-api-host>
+SESSION_COOKIE_SAME_SITE=lax
+CODE_EXECUTION_PROVIDER=jdoodle
+JDOODLE_API_URL=https://api.jdoodle.com/v1
+JDOODLE_CLIENT_ID=<Render secret>
+JDOODLE_CLIENT_SECRET=<Render secret>
 ```
-
-For JDoodle, use `CODE_EXECUTION_PROVIDER=jdoodle` and store
-`JDOODLE_CLIENT_ID` and `JDOODLE_CLIENT_SECRET` as Render secrets instead.
 
 Set `VITE_API_BASE_URL` and `VITE_BACKEND_ORIGIN` in Vercel to the Render
 backend URL. Before public launch, use a custom same-site API domain where
-possible and deploy a production-grade code execution service.
+possible.
 
 ## Tests
 

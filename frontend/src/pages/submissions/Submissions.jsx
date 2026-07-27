@@ -189,10 +189,6 @@ function Submissions() {
               Back to home
             </Link>
           </div>
-          <p className="submissions-development-note">
-            Demo sign-in uses TraceRound&apos;s temporary local account until
-            backend authentication is connected.
-          </p>
         </div>
       </section>
     )

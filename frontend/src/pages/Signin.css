@@ -215,7 +215,7 @@
   text-align: center;
 }
 
-.temporary-auth-note {
+.auth-security-note {
   margin-top: 26px;
   padding: 14px 15px;
   background: rgba(56, 189, 248, 0.045);
@@ -223,14 +223,14 @@
   border-radius: 8px;
 }
 
-.temporary-auth-note strong {
+.auth-security-note strong {
   color: #9edfeb;
   font-size: 9px;
   letter-spacing: 0.08em;
   text-transform: uppercase;
 }
 
-.temporary-auth-note p {
+.auth-security-note p {
   margin: 5px 0 0;
   color: #6e7d92;
   font-size: 10px;
