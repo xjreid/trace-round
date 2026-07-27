@@ -3,8 +3,8 @@ package com.traceround.backend.quota;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.temporal.ChronoUnit;
+import java.time.LocalDate;
+import java.time.ZoneId;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
@@ -14,6 +14,8 @@ public class AiQuotaService {
 
     private static final Duration HOUR = Duration.ofHours(1);
     private static final Duration MINUTE = Duration.ofMinutes(1);
+    private static final ZoneId GEMINI_QUOTA_ZONE =
+        ZoneId.of("America/Los_Angeles");
 
     private final AiQuotaCounter counters;
     private final AiQuotaProperties properties;
@@ -68,9 +70,11 @@ public class AiQuotaService {
 
         int reservedUnits =
             questionCount * (1 + properties.getMaxMessagesPerQuestion()) + 1;
-        Instant dayStart = now.atZone(ZoneOffset.UTC)
-            .toLocalDate()
-            .atStartOfDay(ZoneOffset.UTC)
+        LocalDate quotaDate = now.atZone(GEMINI_QUOTA_ZONE).toLocalDate();
+        Instant dayStart = quotaDate.atStartOfDay(GEMINI_QUOTA_ZONE).toInstant();
+        Instant nextDayStart = quotaDate
+            .plusDays(1)
+            .atStartOfDay(GEMINI_QUOTA_ZONE)
             .toInstant();
         consume(
             "global:daily-ai",
@@ -79,7 +83,7 @@ public class AiQuotaService {
             properties.getDailyUnits(),
             "daily_ai_quota",
             "TraceRound's AI interview capacity has been reached for today. Please try again after the daily reset.",
-            dayStart.plus(1, ChronoUnit.DAYS)
+            nextDayStart
         );
     }
 

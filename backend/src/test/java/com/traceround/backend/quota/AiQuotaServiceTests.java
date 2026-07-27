@@ -46,7 +46,7 @@ class AiQuotaServiceTests {
         );
         assertEquals("daily_ai_quota", exception.getCode());
         assertEquals(
-            Instant.parse("2026-07-27T00:00:00Z"),
+            Instant.parse("2026-07-27T07:00:00Z"),
             exception.getRetryAt()
         );
     }
@@ -54,8 +54,8 @@ class AiQuotaServiceTests {
     @Test
     void dailyCapacityResetsAtMidnightUtc() {
         QuotaIdentity identity = new QuotaIdentity("ip", null);
-        serviceAt("2026-07-26T23:59:00Z").reserveInterview(1, identity);
-        serviceAt("2026-07-27T00:01:00Z").reserveInterview(1, identity);
+        serviceAt("2026-07-27T06:59:00Z").reserveInterview(1, identity);
+        serviceAt("2026-07-27T07:01:00Z").reserveInterview(1, identity);
 
         assertEquals(4, usage.size());
     }
