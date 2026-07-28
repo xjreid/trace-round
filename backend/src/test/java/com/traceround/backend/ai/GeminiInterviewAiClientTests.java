@@ -91,6 +91,30 @@ class GeminiInterviewAiClientTests {
     }
 
     @Test
+    void removesLatexDelimitersFromConversationText() {
+        server.expect(once(), requestTo("https://gemini.test/v1beta/interactions"))
+            .andExpect(jsonPath("$.system_instruction", containsString(
+                "Write O(n), not $O(n)$"
+            )))
+            .andRespond(withSuccess(
+                interactionResponse(
+                    "Your $O(n)$ approach works because $n$ nodes are visited. "
+                        + "Avoid {O(n²)} extra space."
+                ),
+                MediaType.APPLICATION_JSON
+            ));
+
+        String response = client.initialMessage(problem, 1, 1);
+
+        assertEquals(
+            "Your O(n) approach works because n nodes are visited. "
+                + "Avoid O(n²) extra space.",
+            response
+        );
+        server.verify();
+    }
+
+    @Test
     void requestsAndValidatesStructuredFeedbackInQuestionOrder() {
         InterviewQuestion first = completedQuestion(
             problem,

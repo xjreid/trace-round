@@ -10,6 +10,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.regex.Pattern;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -26,6 +27,15 @@ public class GeminiInterviewAiClient implements InterviewAiClient {
 
     private static final String INTERACTIONS_PATH = "/v1beta/interactions";
     private static final String API_REVISION = "2026-05-20";
+    private static final Pattern DOLLAR_COMPLEXITY = Pattern.compile(
+        "\\$\\s*\\{?\\s*([OΘΩ]\\s*\\([^$\\n{}]+\\))\\s*}?\\s*\\$"
+    );
+    private static final Pattern DOLLAR_VARIABLE = Pattern.compile(
+        "\\$\\s*([A-Za-z])\\s*\\$"
+    );
+    private static final Pattern BRACED_COMPLEXITY = Pattern.compile(
+        "\\{\\s*([OΘΩ]\\s*\\([^{}\\n]+\\))\\s*}"
+    );
 
     private final RestClient restClient;
     private final InterviewPromptFactory prompts;
@@ -78,9 +88,8 @@ public class GeminiInterviewAiClient implements InterviewAiClient {
         int questionNumber,
         int totalQuestions
     ) {
-        return generate(
-            prompts.initialMessage(problem, questionNumber, totalQuestions),
-            null
+        return generateConversation(
+            prompts.initialMessage(problem, questionNumber, totalQuestions)
         );
     }
 
@@ -90,7 +99,7 @@ public class GeminiInterviewAiClient implements InterviewAiClient {
         String message,
         List<TranscriptMessage> transcript
     ) {
-        return generate(prompts.response(problem, message, transcript), null);
+        return generateConversation(prompts.response(problem, message, transcript));
     }
 
     @Override
@@ -135,6 +144,23 @@ public class GeminiInterviewAiClient implements InterviewAiClient {
                 exception
             );
         }
+    }
+
+    private String generateConversation(Prompt prompt) {
+        return normalizeConversationText(generate(prompt, null));
+    }
+
+    static String normalizeConversationText(String text) {
+        String normalized = text
+            .replace("\\mathcal{O}", "O")
+            .replace("\\(", "")
+            .replace("\\)", "")
+            .replace("\\[", "")
+            .replace("\\]", "");
+        normalized = DOLLAR_COMPLEXITY.matcher(normalized).replaceAll("$1");
+        normalized = DOLLAR_VARIABLE.matcher(normalized).replaceAll("$1");
+        normalized = BRACED_COMPLEXITY.matcher(normalized).replaceAll("$1");
+        return normalized.trim();
     }
 
     private String extractText(InteractionResponse response) {

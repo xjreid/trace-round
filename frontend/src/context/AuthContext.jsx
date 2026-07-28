@@ -11,12 +11,20 @@ import {
   signOutUser,
 } from '../pages/backend-functions-to-be-implemented/backendFunctions'
 
+const BACKEND_WAKE_NOTICE_DELAY_MS = 2500
+
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
   const [isAuthLoading, setIsAuthLoading] = useState(true)
+  const [isBackendWaking, setIsBackendWaking] = useState(false)
 
   useEffect(() => {
     let isCurrent = true
+    const wakeNoticeTimer = window.setTimeout(() => {
+      if (isCurrent) {
+        setIsBackendWaking(true)
+      }
+    }, BACKEND_WAKE_NOTICE_DELAY_MS)
 
     async function loadCurrentUser() {
       try {
@@ -30,6 +38,8 @@ export function AuthProvider({ children }) {
         }
       } finally {
         if (isCurrent) {
+          window.clearTimeout(wakeNoticeTimer)
+          setIsBackendWaking(false)
           setIsAuthLoading(false)
         }
       }
@@ -39,6 +49,7 @@ export function AuthProvider({ children }) {
 
     return () => {
       isCurrent = false
+      window.clearTimeout(wakeNoticeTimer)
     }
   }, [])
 
@@ -46,6 +57,7 @@ export function AuthProvider({ children }) {
     () => ({
       user,
       isAuthLoading,
+      isBackendWaking,
       signIn: async (credentials) => {
         const signedInUser = await signInUser(credentials)
         setUser(signedInUser)
@@ -61,7 +73,7 @@ export function AuthProvider({ children }) {
         setUser(null)
       },
     }),
-    [isAuthLoading, user],
+    [isAuthLoading, isBackendWaking, user],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

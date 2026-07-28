@@ -13,12 +13,29 @@ import CustomPractice from './pages/problems/CustomPractice'
 import InterviewAccess from './pages/problems/InterviewAccess'
 import Feedback from './pages/problems/Feedback'
 import Signin from './pages/Signin'
+import { useAuth } from './context/authContext'
 import './App.css'
 
 function App() {
+  const { isBackendWaking } = useAuth()
+
   return (
     <div className="app">
       <Header />
+
+      {isBackendWaking && (
+        <aside className="backend-wake-notice" role="status" aria-live="polite">
+          <span className="backend-wake-notice__indicator" aria-hidden="true" />
+          <div>
+            <strong>Starting the interview service</strong>
+            <p>
+              TraceRound&apos;s backend is waking up after a period of
+              inactivity. This can take up to a minute, and the page will
+              continue automatically when it is ready.
+            </p>
+          </div>
+        </aside>
+      )}
 
       <main className="app-content">
         <Routes>
