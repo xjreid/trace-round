@@ -3,6 +3,35 @@
 TraceRound is a coding interview practice platform built with React, Spring Boot,
 PostgreSQL, and a replaceable code-execution provider.
 
+**Live site:** [traceround.com](https://traceround.com)
+
+## Preview
+
+[![TraceRound homepage](docs/screenshots/Homepage.png)](https://traceround.com)
+
+<table>
+  <tr>
+    <td align="center">
+      <img src="docs/screenshots/ProblemLibrary.png" alt="TraceRound problem library">
+      <br><sub>Problem library</sub>
+    </td>
+    <td align="center">
+      <img src="docs/screenshots/InterviewCoding.png" alt="TraceRound interview coding environment">
+      <br><sub>Interview coding environment</sub>
+    </td>
+  </tr>
+  <tr>
+    <td align="center">
+      <img src="docs/screenshots/AI%20Discussion.png" alt="TraceRound AI interview discussion">
+      <br><sub>AI interview discussion</sub>
+    </td>
+    <td align="center">
+      <img src="docs/screenshots/Submissions.png" alt="TraceRound submission history">
+      <br><sub>Submission history</sub>
+    </td>
+  </tr>
+</table>
+
 ## What is implemented
 
 - Problem catalog with 34 curated algorithm and data-structure problems
